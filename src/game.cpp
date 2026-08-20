@@ -69,8 +69,8 @@ float Game::deltaTime() {
 
 void Game::logic(){ // This function runs first
     player->input();
-    if(hitboxObjects.size() > 0)
-    printf("[%d](%p) %p\n", 0, hitboxObjects.at(0)->getOwner(), this);
+    // if(hitboxObjects.size() > 0)
+    // printf("[%d](%p) %p\n", 0, hitboxObjects.at(0)->getOwner(), this);
 
     if(asteroidObjects.size() == 0)
         generateAsteroids();
