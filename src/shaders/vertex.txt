@@ -1,0 +1,32 @@
+#version 460 core
+
+// These locations must match the indices passed to glVertexAttribPointer().
+layout (location=0) in vec3 vertexPos;
+layout (location=1) in vec3 vertexColor;
+
+out vec3 fragmentColor;
+
+// Uniforms are shared by the vertices in one draw call. The CPU updates them
+// once per object so the same mesh data can be moved and rotated without
+// rebuilding the vertex buffers.
+uniform float rotation;
+
+uniform vec2 position;
+
+void main()
+{
+    // Build the 2D rotation matrix using the angle supplied by the CPU.
+    float c = cos(rotation);
+    float s = sin(rotation);
+
+    float x = vertexPos.x * c - vertexPos.y * s;
+    float y = vertexPos.x * s + vertexPos.y * c;
+
+    x -= position.x;
+    y += position.y;
+
+    // gl_Position is clip-space output. The GPU uses it to decide where the
+    // vertex appears on screen after perspective/viewport processing.
+    gl_Position = vec4(x, y, vertexPos.z, 1.0);
+    fragmentColor = vertexColor;
+}

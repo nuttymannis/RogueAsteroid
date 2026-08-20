@@ -1,0 +1,3 @@
+A:/Documents/!vscode/RogueAsteroid/build/CMakeFiles/RogueAsteroid.dir
+A:/Documents/!vscode/RogueAsteroid/build/CMakeFiles/ALL_BUILD.dir
+A:/Documents/!vscode/RogueAsteroid/build/CMakeFiles/ZERO_CHECK.dir
