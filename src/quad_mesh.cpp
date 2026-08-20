@@ -41,11 +41,9 @@ void QuadMesh::uploadGeometry() {
 
     float colors[4 * 3] = {};
     for(size_t i = 0; i < 4; i++){
-        printf("Colors: %f, %f, %f\n", colors[i*3], colors[i*3 + 1], colors[i*3 + 2]);
         colors[i*3] = color.x;
         colors[i*3 + 1] = color.y;
         colors[i*3 + 2] = color.z;
-        printf("Colors After: %f, %f, %f\n", colors[i*3], colors[i*3 + 1], colors[i*3 + 2]);
     }
 
     // Every vertex attribute setup below is recorded in this VAO until another
@@ -56,12 +54,12 @@ void QuadMesh::uploadGeometry() {
     // Upload position data to buffer 0. The data is static because the mesh
     // shape does not change while it is being rendered.
     glBindBuffer(GL_ARRAY_BUFFER, VBOs[0]);
-    glBufferData(GL_ARRAY_BUFFER, sizeof(positions), positions, GL_STATIC_DRAW);
+    glBufferData(GL_ARRAY_BUFFER, 12*4, positions, GL_STATIC_DRAW);
 
     // Attribute location 0 receives three floats per vertex: x, y, and z.
     // A stride of 16 bytes equals four 4-byte floats, and offset 0 starts at x.
     glVertexAttribPointer(0, 3, GL_FLOAT, 
-            GL_FALSE, 16, (void*)0);
+            GL_FALSE, 12, (void*)0);
     glEnableVertexAttribArray(0);
 
     // Upload one RGB color for each vertex into the second buffer.
@@ -71,7 +69,7 @@ void QuadMesh::uploadGeometry() {
     // Attribute location 1 receives the three color components. Enabling each
     // attribute makes it available to the vertex shader during drawing.
     glVertexAttribPointer(1, 3, GL_FLOAT, 
-            GL_FALSE, 4 * 12, (void*)0);
+            GL_FALSE, 12, (void*)0);
     glEnableVertexAttribArray(1);
 }
 
