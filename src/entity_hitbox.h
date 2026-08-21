@@ -4,30 +4,25 @@
 #include "game.h"
 #include "entity.h"
 #include "quad_mesh.h"
+#include "rect.h"
 
 class Game;
 
 class QuadMesh;
 
-struct Rect {
-    float x, y, x1, y1;
-
-    float width() {return x1-x;}
-    float height() {return y1-y;}
-
-    Vec2 getPos() {return {x + width()/2, y - height()/2};}
-};
-
 class Hitbox {
     public:
     Hitbox(Game* _game, Entity* _owner);
     Hitbox(Game *_game, Entity* _owner, Rect _r);
+    ~Hitbox();
 
     void setRect(Rect _r)     {box = _r;}
+    void setColor(Vec3 _color){color = _color;}
     Rect* getRect()           {return &box;}
     Entity* getOwner()        {return owner;}
 
     void toggleDraw()         {drawMesh = !drawMesh;}
+    void setDraw(bool _draw)  {drawMesh = _draw;}
 
     void uploadHitbox()       
     {

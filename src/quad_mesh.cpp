@@ -7,11 +7,12 @@
 
 #define M_PI           3.14159265358979323846
 
-QuadMesh::QuadMesh(Game* _game){
+QuadMesh::QuadMesh(Game* _game, Rect _r) {
     vertex_count = 4;
 
     shader = _game->getShader();
 
+    box = _r;
 
     color = {1.0f, 1.0f, 1.0f};
 
@@ -24,7 +25,12 @@ QuadMesh::QuadMesh(Game* _game){
     uploadGeometry();
 }
 
-QuadMesh::QuadMesh(Game* _game, float rootX, float rootY, float _size) : QuadMesh(_game) {
+QuadMesh::QuadMesh(Game* _game, float _size) : QuadMesh(_game, {0, 0, _size, _size}) {
+    setSize(_size);
+    setPosition(0, 0);
+}
+
+QuadMesh::QuadMesh(Game* _game, float rootX, float rootY, float _size) : QuadMesh(_game, {rootX - _size, rootY + _size, _size * 2.0f, _size * 2.0f}) {
     setPosition(rootX, rootY);
     setSize(_size);
     uploadGeometry();
@@ -32,12 +38,11 @@ QuadMesh::QuadMesh(Game* _game, float rootX, float rootY, float _size) : QuadMes
 
 void QuadMesh::uploadGeometry() {
     const float positions[] = {
-        -size, size, 0.0f,
-        size, size, 0.0f,
-        size, -size, 0.0f,
-        -size, -size, 0.0f
+        box.x, box.y, 0.0f,
+        box.x + box.w, box.y, 0.0f,
+        box.x + box.w, box.y + box.h, 0.0f,
+        box.x, box.y + box.h, 0.0f
     };
-
 
     float colors[4 * 3] = {};
     for(size_t i = 0; i < 4; i++){

@@ -1,5 +1,6 @@
 #include "bullet.h"
 #include "game.h"
+#include "entity_hitbox.h"
 
 Bullet::Bullet(Game* _game, float rootX, float rootY, float bulletSize,
 			   float bulletSpeed, float rotation, bool _isPlayer)
@@ -17,12 +18,14 @@ Bullet::Bullet(Game* _game, float rootX, float rootY, float bulletSize,
 	accelerate(getSpeed());
 	mesh->setPosition(pos.x, pos.y);
 	mesh->setRotation(rot);
+
+    
 }
 
 Bullet::~Bullet()
 {
 	// Bullet owns the mesh it creates, so release the mesh with the bullet.
-	delete mesh;
+    delete mesh;
 }
 
 void Bullet::logic(){
@@ -35,9 +38,15 @@ void Bullet::logic(){
 	// container once they have crossed the visible play area.
 	const float _x = pos.x;
 	const float _y = pos.y;
-    if(_x > 1 || _x < -1 || _y > 1 || _y < -1)
+    if(_x > 1 || _x < -1 || _y > 1 || _y < -1){
         expired = true;
-       
+		hitbox->setDraw(false); // Disable debug rendering for expired bullets.
+	}
+
+    if(!expired && hitbox != nullptr){
+        hitbox->setRect({pos.x - size + 20.0f, pos.y - size * 4.0f, size * 8.0f, size * 8.0f});
+        hitbox->logic();
+    }
 }
 
 void Bullet::draw(GLuint shader)

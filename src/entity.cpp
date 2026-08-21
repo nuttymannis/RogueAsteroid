@@ -13,8 +13,12 @@ Entity::Entity(Game* _game, bool generateHitbox)
       brakeForce(0.01f),
       brake(false),
       pos{0.0f, 0.0f},
-      bounds{800.0f, 600.0f}
+    bounds{800.0f, 600.0f},
+    hitbox(nullptr)
 {
+    // Some entities do not participate in collision detection. Keep the
+    // pointer valid in both cases so logic() and the destructor can safely
+    // handle an absent hitbox.
     if(generateHitbox)
         hitbox = new Hitbox(_game, this);
 }
@@ -42,7 +46,6 @@ void Entity::rotate(float amount)
 
 void Entity::logic()
 {
-    hitbox->logic();
     integrateMotion();
 
     // World entities wrap around the normalized screen bounds by default.
@@ -55,6 +58,11 @@ void Entity::logic()
         pos.y *= -1.0f;
         pos.x *= -1.0f;
     }
+
+    // Update the hitbox after movement so collision checks use this frame's
+    // position instead of the previous frame's position.
+    if (hitbox != nullptr)
+        hitbox->logic();
 }
 
 void Entity::integrateMotion()
