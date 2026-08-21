@@ -19,10 +19,11 @@ void setColor(float _r, float _g, float _b) { color = {_r, _g, _b}; uploadGeomet
 ~CircleMesh();
 
 private:
-Vec2 pos;
-float size, rot;
+Vec2 pos;                // Mesh translation sent to the vertex shader.
+float size, rot;         // Geometry radius and shader rotation in radians.
 void uploadGeometry();
-Vec3 color;
-unsigned int VAO = 0, vertex_count;
-std::vector<unsigned int> VBOs;
+Vec3 color;              // RGB color copied into the color VBO for each point.
+unsigned int VAO = 0;    // OpenGL object describing the vertex-input state.
+unsigned int vertex_count; // Number of points submitted by glDrawArrays.
+std::vector<unsigned int> VBOs; // Position and color buffer object handles.
 };

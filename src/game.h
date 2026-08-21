@@ -4,6 +4,7 @@
 #include "bullet.h"
 #include "star.h"
 #include "asteroid.h"
+#include "input_buffer.h"
 
 class Player;
 
@@ -12,6 +13,8 @@ class Random;
 class Star;
 
 class Entity;
+
+class InputBuffer;
 
 class Game {
     public:
@@ -24,6 +27,8 @@ class Game {
     std::vector<Hitbox*>& getHitboxList() {return hitboxObjects;}
     double getCurrentTime() { return currentTime; }
     GLuint getShader() { return shader; }
+    bool getDebugStatus() {return debug;}
+    void toggleDebugStatus() {debug = !debug;}
     static float randomFloat(float minimum, float maximum);
     float deltaTime();
     void generateStars(int count = 8, float _brightness = 1.0f);
@@ -32,17 +37,23 @@ class Game {
     void calculateFrames();
     void draw();
     void logic();
+    InputBuffer* getInputBuffer() {return inputBuffer;}
 
     private:
-    uint16_t score;
-    std::vector<Bullet*> bulletObjects = std::vector<Bullet*>();
-    std::vector<Star*> starObjects = std::vector<Star*>();
-    std::vector<Asteroid*> asteroidObjects = std::vector<Asteroid*>();
-    std::vector<Entity*> entityList = std::vector<Entity*>();
-    std::vector<Hitbox*> hitboxObjects = std::vector<Hitbox*>();
-    GLuint shader;
-    double currentTime, fpsLast, lastTime;
-    float _deltaTime;
-    int frameCount;
-    Player* player;
+    bool debug = true;                  // Enables collision-box/debug rendering.
+    uint16_t score;                     // Current player score.
+    std::vector<Bullet*> bulletObjects; // Active projectiles owned by the game.
+    std::vector<Star*> starObjects;     // Decorative stars rendered in the scene.
+    std::vector<Asteroid*> asteroidObjects; // Asteroids currently in the world.
+    std::vector<Entity*> entityList;    // General entity registry, if populated.
+    std::vector<Hitbox*> hitboxObjects; // Registered hitboxes used for collision checks.
+    GLuint shader;                      // Linked OpenGL shader program for the scene.
+    double currentTime;                 // Current GLFW clock time.
+    double fpsLast;                     // Clock time when the FPS interval began.
+    double lastTime;                    // Previous frame time used for deltaTime.
+    double AABELast;                    // Previous AABB collision update time.
+    float _deltaTime;                   // Seconds elapsed since the previous frame.
+    int frameCount;                     // Frames counted during the FPS interval.
+    Player* player;                     // Player object owned by the game.
+    InputBuffer* inputBuffer;           // Input buffer for handling player input.
 };

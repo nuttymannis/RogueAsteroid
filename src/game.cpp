@@ -32,7 +32,22 @@ Game::Game(){
 Game::Game(GLFWwindow* _window, GLuint _shader) : Game(){
     window = _window;
     shader = _shader;
+
+    inputBuffer = new InputBuffer(this);
     player = new Player(this, shader);
+
+    inputBuffer->bindKey({GLFW_KEY_F8, false}, [this](){generateStars(512);});
+    inputBuffer->bindKey({GLFW_KEY_F7, false}, [this](){toggleDebugStatus();});
+
+    glfwSetWindowUserPointer(window, this);
+    glfwSetKeyCallback(window, [](GLFWwindow* callbackWindow, int key, int scancode, int action, int mods){
+        Game* game = static_cast<Game*>(glfwGetWindowUserPointer(callbackWindow));
+
+        if(game == nullptr)
+            return;
+
+        game->getInputBuffer()->handleKey(key, action);
+    });
 
     generateStars(512);
 }
@@ -60,6 +75,26 @@ void Game::generateAsteroids(int count){
         asteroid->rotate(Game::randomFloat(0, M_PI*2));
         asteroid->accelerate(Game::randomFloat(0.01f,0.1f));
         asteroidObjects.push_back(asteroid);
+    }
+}
+
+void Game::AABECollisionLogic()
+{ // TODO: Change to sweep and prune or spatial partitioning to reduce the number of collision checks.
+    for (Hitbox* host : hitboxObjects) {
+        if (host == nullptr)
+            continue;
+
+        bool colliding = false;
+        for (Hitbox* check : hitboxObjects) {
+            if (check != nullptr && host != check && host->isColliding(check)) {
+                colliding = true;
+                break;
+            }
+        }
+
+        host->setColor(colliding
+            ? Vec3{1.0f, 0.0f, 0.0f}
+            : Vec3{1.0f, 1.0f, 0.5f});
     }
 }
 
@@ -104,6 +139,9 @@ void Game::draw(){ // Handles all drawing of game objects after logic() is calle
     }
 
     player->draw();
+
+    // All entities have now updated their hitboxes for this frame.
+    AABECollisionLogic();
 }
 
 

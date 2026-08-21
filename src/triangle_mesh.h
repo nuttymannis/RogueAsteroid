@@ -18,8 +18,10 @@ void draw(GLuint shader);
 
 private:
 void uploadGeometry();
-Vec2 pos;
-float size = 0.03f, rot = 0.0f;
-unsigned int VAO = 0, vertex_count;
-std::vector<unsigned int> VBOs;
+Vec2 pos;                    // Mesh translation sent to the vertex shader.
+float size = 0.03f;          // Triangle size used when building its vertices.
+float rot = 0.0f;            // Mesh rotation in radians.
+unsigned int VAO = 0;        // OpenGL vertex-array configuration handle.
+unsigned int vertex_count;   // Number of triangle vertices submitted.
+std::vector<unsigned int> VBOs; // Position and color buffer object handles.
 };
