@@ -16,10 +16,13 @@ class Hitbox {
     Hitbox(Game *_game, Entity* _owner, Rect _r);
     ~Hitbox();
 
-    void setRect(Rect _r)     {box = _r;}
+    void setRect(Rect _r)     {worldBox = _r;}
     void setColor(Vec3 _color){color = _color;}
-    Rect* getRect()           {return &box;}
+    Rect* getRect()           {return &worldBox;}
     Entity* getOwner()        {return owner;}
+
+    Vec2 getPos()             {return pos;}
+    void setPos(Vec2 _pos)    {pos = _pos;}
 
     void toggleDraw()         {drawMesh = !drawMesh;}
     void setDraw(bool _draw)  {drawMesh = _draw;}
@@ -35,14 +38,20 @@ class Hitbox {
     void logic();
     void draw();
 
+    float forwardMeshRot = 0.0f;
+
     private:
+    const float MESH_WIDTH = 0.001f;
+    float rot;
     bool drawMesh = true;
-    QuadMesh* mesh;
+    QuadMesh* hitboxMesh;
+    QuadMesh* accelMesh;
+    QuadMesh* forwardMesh;
     Vec3 color;
     float size = 5.0f;
     Entity* owner;
     Game* game;
-    Rect box;
+    Rect worldBox;
     Vec2 pos;
 };
 

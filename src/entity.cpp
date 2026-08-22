@@ -12,9 +12,10 @@ Entity::Entity(Game* _game, bool generateHitbox)
       inertia(0.0005f),
       brakeForce(0.01f),
       brake(false),
+      deathFlag(false),
       pos{0.0f, 0.0f},
-    bounds{800.0f, 600.0f},
-    hitbox(nullptr)
+      bounds{800.0f, 600.0f},
+      hitbox(nullptr)
 {
     // Some entities do not participate in collision detection. Keep the
     // pointer valid in both cases so logic() and the destructor can safely
@@ -33,10 +34,8 @@ void Entity::accelerate(float amount)
     // The mesh points upward when rotation is zero. Convert that heading into
     // a direction vector, then scale it by the requested acceleration and the
     // elapsed frame time so movement is independent of frame rate.
-    const float forwardX = std::sin(rot);
-    const float forwardY = std::cos(rot);
-    deltaX += forwardX * amount * game->deltaTime();
-    deltaY += forwardY * amount * game->deltaTime();
+    deltaX += forward().x * amount * game->deltaTime();
+    deltaY += forward().y * amount * game->deltaTime();
 }
 
 void Entity::rotate(float amount)
@@ -52,11 +51,9 @@ void Entity::logic()
     // Projectiles override logic() so they can leave the screen and expire.
     if (pos.x > 1.0f || pos.x < -1.0f) {
         pos.x *= -1.0f;
-        pos.y *= -1.0f;
     }
     if (pos.y > 1.0f || pos.y < -1.0f) {
         pos.y *= -1.0f;
-        pos.x *= -1.0f;
     }
 
     // Update the hitbox after movement so collision checks use this frame's
@@ -80,4 +77,11 @@ void Entity::integrateMotion()
     pos.x += deltaX;
     pos.y += deltaY;
 
+    if (hitbox != nullptr && std::hypot(deltaX, deltaY) > 0.00001f) {
+        // The forward mesh extends along local +Y, so atan2 arguments are
+        // swapped compared with a mesh whose forward direction is +X.
+        hitbox->forwardMeshRot = std::atan2(deltaX, deltaY);
+    }
+
+    rot += deltaRot * game->deltaTime();
 }

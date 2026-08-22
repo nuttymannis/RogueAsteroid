@@ -19,13 +19,27 @@ class InputBuffer;
 class Game {
     public:
     Game();
-    Game(GLFWwindow* _window, GLuint _shader);
+    Game(GLFWwindow* _window, GLuint _shader, InputBuffer* _iBuffer = nullptr);
     GLFWwindow* window;
     GLFWwindow* getWindow() { return window; }
     void spawnBullet(Bullet* bullet) { bulletObjects.push_back(bullet); }
     std::vector<Bullet*>& getBullets() { return bulletObjects; }
     std::vector<Hitbox*>& getHitboxList() {return hitboxObjects;}
+    void removeHitbox(Hitbox* hitbox);
+    Hitbox* getTargetHitbox() {return targetHitbox;}
     double getCurrentTime() { return currentTime; }
+    uint16_t getScore() { return score; }
+    void setScore(uint16_t _score) { score = _score;}
+    void addScore(uint16_t _score) { score += _score;}
+    bool isPaused(){ return pause;}
+    void pauseGame() {
+        if(isPaused())
+            pause = false;
+        else 
+            pause = true;
+        
+        printf("Pausing game: %d", isPaused());
+    }
     GLuint getShader() { return shader; }
     bool getDebugStatus() {return debug;}
     void toggleDebugStatus() {debug = !debug;}
@@ -41,6 +55,7 @@ class Game {
 
     private:
     bool debug = true;                  // Enables collision-box/debug rendering.
+    bool pause = false;                 // Pauses game if true.
     uint16_t score;                     // Current player score.
     std::vector<Bullet*> bulletObjects; // Active projectiles owned by the game.
     std::vector<Star*> starObjects;     // Decorative stars rendered in the scene.
@@ -56,4 +71,5 @@ class Game {
     int frameCount;                     // Frames counted during the FPS interval.
     Player* player;                     // Player object owned by the game.
     InputBuffer* inputBuffer;           // Input buffer for handling player input.
+    Hitbox* targetHitbox;               // Temporary hitbox used for collision checks.
 };
