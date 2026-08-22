@@ -1,6 +1,7 @@
 #include "config.h"
 #include "triangle_mesh.h"
 #include "game.h"
+#include <filesystem>
 
 unsigned int make_module(const std::string& filepath, unsigned int module_type);
 unsigned int make_shader(const std::string& vertex_filepath, const std::string& fragment_filepath);
@@ -8,9 +9,7 @@ unsigned int make_shader(const std::string& vertex_filepath, const std::string& 
 const int WIN_X = 800, 
           WIN_Y = 600;
 
-Game game;
-
-int main(){
+int main(int argc, char* argv[]){
 
     // GLFW owns the operating-system window and the OpenGL context. The
     // context is the stateful environment in which all later OpenGL calls run.
@@ -46,12 +45,19 @@ int main(){
     // output. The viewport converts shader coordinates from -1..1 into pixels.
     glViewport(0,0,w,h);
     
+    const std::filesystem::path executablePath =
+        std::filesystem::absolute(argv[0]).parent_path();
+    const std::filesystem::path shaderDirectory = executablePath / "shaders";
     unsigned int shader = make_shader(
-        "../shaders/vertex.txt",
-        "../shaders/fragment.txt"
+        (shaderDirectory / "vertex.txt").string(),
+        (shaderDirectory / "fragment.txt").string()
     );
 
-    Game* game = new Game(window, shader);
+    
+    InputBuffer* inputBuffer = new InputBuffer();
+    Game* game = new Game(window, shader, inputBuffer);
+
+    inputBuffer->setGame(game);
 
     while(!glfwWindowShouldClose(window)){
         glfwPollEvents();
@@ -61,6 +67,7 @@ int main(){
         triangle->setPosition((2 *(float)_x/WIN_X) - 1, (2 * -(float)_y/WIN_Y) + 1.0f);
         */
 
+        // Set the frame counter and delta time
         game->calculateFrames();
 
         // Clear the previous frame's color pixels before drawing the new frame.
@@ -68,12 +75,17 @@ int main(){
 
         // Select the linked shader program for all subsequent draw operations.
         glUseProgram(shader);
-
+        
         game->logic(); 
         game->draw();
+        
+
         // Present the completed back buffer and make a fresh back buffer
         // available for the next frame. This prevents partially drawn frames
-        // from being shown to the user.
+        // from being shown to the usaer.
+
+        inputBuffer->actionBuffer();
+
         glfwSwapBuffers(window);
     }
 

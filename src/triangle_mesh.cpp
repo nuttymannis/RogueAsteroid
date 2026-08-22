@@ -16,6 +16,8 @@ TriangleMesh::TriangleMesh(Game* _game) {
     VBOs.resize(2);
     glGenBuffers(2, VBOs.data());
 
+    color = {1.0f, 1.0f, 1.0f};
+
     uploadGeometry();
 }
 
@@ -32,11 +34,18 @@ void TriangleMesh::uploadGeometry() {
         0.0f, size * 1.75f, 0.0f
     };
 
-    const float colors[] = {
-        1.0f, 0.0f, 0.0f,
-        0.0f, 1.0f, 0.0f,
-        0.0f, 0.0f, 1.0f
-    };
+    /* const float colors[] = {
+        std::fmod(rot/(2.0f*float(M_PI)) + hue, 1.0f), 0.0f, 0.0f,
+        0.0f, std::fmod(rot/(2.0f*float(M_PI)) + hue, 1.0f), 0.0f,
+        0.0f, 0.0f, std::fmod(rot/(2.0f*float(M_PI)) + hue, 1.0f)
+    }; */
+
+    float colors[3 * 3] = {};
+    for(size_t i = 0; i < sizeof(colors) / 3 / 4; i++){
+        colors[i*3] = color.x;
+        colors[i*3+1] = color.y;
+        colors[i*3+2] = color.z;
+    }
 
     // Every vertex attribute setup below is recorded in this VAO until another
     // VAO is bound. This lets draw() restore the complete mesh input state with

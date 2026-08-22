@@ -40,13 +40,28 @@ void Bullet::logic(){
 	const float _y = pos.y;
     if(_x > 1 || _x < -1 || _y > 1 || _y < -1){
         expired = true;
-		hitbox->setDraw(false); // Disable debug rendering for expired bullets.
+		if (hitbox != nullptr)
+			hitbox->setDraw(false); // Disable debug rendering for expired bullets.
 	}
 
     if(!expired && hitbox != nullptr){
-        hitbox->setRect({pos.x - size + 20.0f, pos.y - size * 4.0f, size * 8.0f, size * 8.0f});
+        //hitbox->setRect({pos.x - size + 20.0f, pos.y - size * 4.0f, size * 8.0f, size * 8.0f});
         hitbox->logic();
     }
+}
+
+void Bullet::onCollision(Entity *target)
+{
+	if(target != nullptr && target != this && expired == false && target->isDead() == false){
+		printf("[!] Bullet *%p collided with Entity *%p\n", this, target);
+		expired = true;
+		if (hitbox != nullptr)
+			hitbox->setDraw(false); // Disable debug rendering for expired bullets.
+		
+		game->addScore(100);
+		printf("Score: %d\n", game->getScore());
+		target->kill();
+	}
 }
 
 void Bullet::draw(GLuint shader)

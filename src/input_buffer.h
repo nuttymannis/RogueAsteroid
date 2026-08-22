@@ -29,7 +29,9 @@ struct InputKeyHash {
 
 class InputBuffer {
     public:
-    InputBuffer(Game* _game); 
+    InputBuffer(Game* _game = nullptr); 
+
+    void setGame(Game* _game) {game = _game;}
     
     void bindKey(InputKey _key, std::function<void()> _action);
     void bindKey(int _key, std::function<void()> _action);

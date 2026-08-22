@@ -5,7 +5,7 @@
 
 Star::Star(Game* _game, bool init) : Entity(_game, false){
     randomizePosition();
-    size = 0.001f;
+    size = 0.005f;
     brightness = 1;
     if(init)
     initMesh();

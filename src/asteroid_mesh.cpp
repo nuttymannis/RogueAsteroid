@@ -7,7 +7,7 @@
 
 #define M_PI           3.14159265358979323846
 
-AsteroidMesh::AsteroidMesh(Game* _game) : Entity(_game){
+AsteroidMesh::AsteroidMesh(Game* _game) : Entity(_game, false){
     vertex_count = 12;
 
     color = {1.0f, 1.0f, 1.0f};
@@ -37,7 +37,7 @@ void AsteroidMesh::generateVertexOffsets() {
     asteroidVertexOffests.reserve(16);
 
     for(int i = 0; i < 16; i++){
-        asteroidVertexOffests.push_back(Game::randomFloat(0.4f, 1.1f));
+        asteroidVertexOffests.push_back(Game::randomFloat(0.6f, 1.3f));
     }
 
     // Rebuild the GPU vertex buffer so newly generated offsets affect the

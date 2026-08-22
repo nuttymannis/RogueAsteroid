@@ -4,6 +4,15 @@
 #include "player.h"
 #include "asteroid.h"
 #include "entity_hitbox.h"
+#include <algorithm>
+
+void Game::removeHitbox(Hitbox* hitbox)
+{
+    if(hitbox == nullptr)
+        return;
+    auto hitboxIt = std::remove(hitboxObjects.begin(), hitboxObjects.end(), hitbox);
+    hitboxObjects.erase(hitboxIt, hitboxObjects.end());
+}
 
 float Game::randomFloat(float minimum, float maximum)
 {
@@ -19,6 +28,8 @@ float Game::randomFloat(float minimum, float maximum)
 Game::Game(){
     window = NULL;
     score = 0;
+	targetHitbox = nullptr;
+    setScore(0);
     
     // Initialize all timing values from the same clock sample so the first
     // frame has a valid delta time instead of using uninitialized data.
@@ -29,15 +40,48 @@ Game::Game(){
     
 }
 
-Game::Game(GLFWwindow* _window, GLuint _shader) : Game(){
+Game::Game(GLFWwindow* _window, GLuint _shader, InputBuffer* _iBuffer) : Game(){
     window = _window;
     shader = _shader;
 
-    inputBuffer = new InputBuffer(this);
+    if(_iBuffer != nullptr)
+        inputBuffer = _iBuffer;
+    else
+        inputBuffer = new InputBuffer(this);
+      
     player = new Player(this, shader);
 
+    inputBuffer->bindKey({GLFW_KEY_ESCAPE}, [this](){pauseGame();});
     inputBuffer->bindKey({GLFW_KEY_F8, false}, [this](){generateStars(512);});
     inputBuffer->bindKey({GLFW_KEY_F7, false}, [this](){toggleDebugStatus();});
+
+    inputBuffer->bindKey(GLFW_KEY_F6, [this](){
+        for(size_t i = 0; i < hitboxObjects.size(); ++i){
+            Hitbox* hitbox = hitboxObjects[i];
+            if(hitbox != nullptr){
+                printf("Hitbox %zu: Owner %p, Owner Type: %s, Pos [%f, %f], Box [%f, %f, %f, %f]\n", 
+                    i,
+                    hitbox->getOwner(),
+                    typeid(*(hitbox->getOwner())).name(),
+                    hitbox->getPos().x,
+                    hitbox->getPos().y,
+                    hitbox->getRect()->x,
+                    hitbox->getRect()->y,
+                    hitbox->getRect()->w, 
+                    hitbox->getRect()->h
+                );
+            }
+        }
+    });
+
+    inputBuffer->bindKey({GLFW_KEY_F5, true}, [this](){
+        double x, y;
+        glfwGetCursorPos(window, &x, &y);
+
+        float newX = float(1.0 - ((x / 800.0) * 2.0));
+        float newY = float(1.0 - ((y / 600.0) * 2.0));
+        player->setPosition(newX, newY);
+    });
 
     glfwSetWindowUserPointer(window, this);
     glfwSetKeyCallback(window, [](GLFWwindow* callbackWindow, int key, int scancode, int action, int mods){
@@ -73,28 +117,60 @@ void Game::generateAsteroids(int count){
     for(int i = 0; i < count; i++){
         Asteroid* asteroid = new Asteroid(this);
         asteroid->rotate(Game::randomFloat(0, M_PI*2));
-        asteroid->accelerate(Game::randomFloat(0.01f,0.1f));
+        asteroid->accelerate(2.0f * deltaTime()); //Game::randomFloat(0.001f,0.0013f)
         asteroidObjects.push_back(asteroid);
     }
 }
 
 void Game::AABECollisionLogic()
-{ // TODO: Change to sweep and prune or spatial partitioning to reduce the number of collision checks.
-    for (Hitbox* host : hitboxObjects) {
+{   // TODO: Change to sweep and prune or spatial partitioning to reduce the number of collision checks.
+
+    // Copy the registered pointers before checking collisions. Collision
+    // callbacks can mark entities for deletion, so iterating over a stable
+    // snapshot prevents the loop from being invalidated by later cleanup.
+    const std::vector<Hitbox*> collisionSnapshot = hitboxObjects;
+
+    // Check each hitbox against every other hitbox. This is a simple
+    // all-pairs collision test with O(n^2) time complexity.
+    for (Hitbox* host : collisionSnapshot) {
         if (host == nullptr)
             continue;
 
+        // Reset the previous target before searching for a collision for this
+        // host. Only the first overlapping hitbox is handled this frame.
+        targetHitbox = nullptr;
+
         bool colliding = false;
-        for (Hitbox* check : hitboxObjects) {
+        for (Hitbox* check : collisionSnapshot) {
+            // Do not compare a hitbox with itself. isColliding() performs the
+            // axis-aligned bounding-box test against the candidate target.
             if (check != nullptr && host != check && host->isColliding(check)) {
                 colliding = true;
+                targetHitbox = check;
                 break;
             }
         }
 
+        // Convert the hitboxes back into the entities that own them. The
+        // collision callback belongs to the host entity, while target is the
+        // other entity involved in the collision.
+        Entity* hostOwner = host->getOwner();
+        Entity* target = targetHitbox != nullptr
+            ? targetHitbox->getOwner()
+            : nullptr;
+
+        // Dispatch only when both owners are valid. Objects are marked for
+        // removal by callbacks, but are deleted later by Game's cleanup code.
+        if (colliding && hostOwner != nullptr && target != nullptr) {
+            hostOwner->onCollision(target);
+        }
+
+        // Red identifies overlapping hitboxes and yellow identifies clear
+        // hitboxes. This affects only the optional debug visualization; the
+        // collision result itself is determined by isColliding().
         host->setColor(colliding
             ? Vec3{1.0f, 0.0f, 0.0f}
-            : Vec3{1.0f, 1.0f, 0.5f});
+            : Vec3{1.0f, 1.0f, 0.5f});  // When not colliding
     }
 }
 
@@ -117,7 +193,7 @@ void Game::draw(){ // Handles all drawing of game objects after logic() is calle
         star->draw(Game::shader);
     }
 
-    for (size_t i = 0; i < bulletObjects.size();) {
+    for (size_t i = 0; i < bulletObjects.size() && pause == false;) {
         Bullet* bullet = bulletObjects[i];
         bullet->draw(Game::shader);
 
@@ -134,11 +210,18 @@ void Game::draw(){ // Handles all drawing of game objects after logic() is calle
         }
     }
     
-    for(size_t i = 0; i < asteroidObjects.size(); i++){
+    for(size_t i = 0; i < asteroidObjects.size() && pause == false; ) {
+        if(asteroidObjects[i]->isDead()){
+            delete asteroidObjects[i];
+            asteroidObjects.erase(asteroidObjects.begin() + i);
+        } else {
             asteroidObjects[i]->draw();
+            ++i;
+        }
     }
 
-    player->draw();
+    if(pause == false)
+        player->draw();
 
     // All entities have now updated their hitboxes for this frame.
     AABECollisionLogic();
@@ -156,6 +239,7 @@ void Game::calculateFrames(){
 
     // Fps Counter
     frameCount++;
+    //printf("Frame Count: %i\n", frameCount);
     if(currentTime - fpsLast >= seconds){
         fpsLast = currentTime;
         printf("%f fps\n", double(frameCount/seconds));

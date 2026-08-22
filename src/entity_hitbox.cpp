@@ -12,20 +12,34 @@ Hitbox::Hitbox(Game* _game, Entity* _owner){
     pos = owner->getPosition();
     size = owner->getSize();
     
-    box = {
+    worldBox = {
         pos.x - size,
         pos.y - size,
         size * 2.0f,
         size * 2.0f
     };
 
-    // The mesh uses a local rectangle centered at its origin. The owner
-    // position is supplied separately through the mesh transform uniform.
-    mesh = new QuadMesh(_game, {
+    // The hitboxMesh uses a local rectangle centered at its origin. The owner
+    // position is supplied separately through the hitboxMesh transform uniform.
+    hitboxMesh = new QuadMesh(_game, {
         -size,
         -size,
         size * 2.0f,
         size * 2.0f
+    });
+
+    accelMesh = new QuadMesh(_game, {
+        1.0f,
+        1.0f,
+        1.0f,
+        1.0f
+    });
+
+    forwardMesh = new QuadMesh(_game, {
+        1.0f,
+        1.0f,
+        1.0f,
+        1.0f
     });
 
     uploadHitbox();
@@ -34,29 +48,37 @@ Hitbox::Hitbox(Game* _game, Entity* _owner){
 Hitbox::Hitbox(Game *_game, Entity* _owner, Rect _r)  : Hitbox(_game, _owner)
 {
     setRect(_r);
-    mesh->setBox(_r);
+    hitboxMesh->setBox(_r);
 }
 
 Hitbox::~Hitbox(){
-    delete mesh;
+    if (game != nullptr) {
+        game->removeHitbox(this);
+    }
+    delete hitboxMesh;
+    delete forwardMesh;
+    delete accelMesh;
 }
 
 bool Hitbox::isColliding(Hitbox* _target)
 {
+    if (_target == nullptr)
+        return false;
+
     Rect* _tBox = _target->getRect();
 
-    return  box.x < _tBox->x + _tBox->w &&
-            box.x + box.w > _tBox->x &&
-            box.y < _tBox->y + _tBox->h &&
-            box.y + box.h > _tBox->y;
+    return  worldBox.x < _tBox->x + _tBox->w &&
+            worldBox.x + worldBox.w > _tBox->x &&
+            worldBox.y < _tBox->y + _tBox->h &&
+            worldBox.y + worldBox.h > _tBox->y;
             
 }
 
 void Hitbox::logic(){
-    // The hitbox can only update if both its render mesh and owning entity
+    // The hitbox can only update if both its render hitboxMesh and owning entity
     // still exist. This also protects against drawing after either object has
     // been destroyed or not initialized.
-    if(mesh != nullptr && owner != nullptr){
+    if(hitboxMesh != nullptr && owner != nullptr && game != nullptr){
         drawMesh = game->getDebugStatus();
 
         // Copy the owner's current transform into the hitbox state so the
@@ -66,7 +88,7 @@ void Hitbox::logic(){
 
         // Store the collision rectangle in world coordinates. The rectangle's
         // origin is its upper-left corner, while w and h describe its extent.
-        box = {
+        worldBox = {
             pos.x - ownerSize,
             pos.y - ownerSize,
             ownerSize * 2.0f,
@@ -74,15 +96,53 @@ void Hitbox::logic(){
         };
 
         // QuadMesh stores local vertex coordinates, so give it a rectangle
-        // centered around its own origin. The mesh is translated below using
+        // centered around its own origin. The hitboxMesh is translated below using
         // the owner's world position.
-        mesh->setColor(color);
-        mesh->setBox({-ownerSize, -ownerSize, ownerSize * 2.0f, ownerSize * 2.0f});
+
+        Rect localBox = {-ownerSize, -ownerSize, worldBox.w, worldBox.h}; // Stores world hitbox coordinates in local coordinates
+        hitboxMesh->setBox(localBox);
+        hitboxMesh->setColor(color);
+        
+        float tanX = std::sin(owner->getAcceleration().x);
+        float tanY = std::cos(owner->getAcceleration().y);
 
         // Keep the debug quad aligned with the owner's position and rotation.
-        mesh->setPosition(pos.x, pos.y);
-        mesh->setRotation(owner->getRotation());
-        mesh->setSize(owner->getSize());
+        hitboxMesh->setPosition(pos.x, pos.y);
+        hitboxMesh->setRotation(owner->getRotation());
+        hitboxMesh->setSize(owner->getSize());
+
+
+        Rect linebox = {
+            -ownerSize + (worldBox.w / 2.0f) - MESH_WIDTH,
+            -ownerSize + (worldBox.h / 2.0f),
+            MESH_WIDTH * 2.0f,
+            0.1f
+        };
+
+        forwardMesh->setBox(linebox);
+        forwardMesh->setColor(Vec3{1.0f,1.0f,1.0f});
+
+        forwardMesh->setPosition(worldBox.getPos().x, worldBox.getPos().y);
+
+        /* forwardMesh->setRotation(std::acos(
+            owner->getPosition().dot(Vec2{tanX, tanY}) /
+            (owner->getPosition().magnitude() * Vec2{tanX, tanY}.magnitude())
+        )); // -std::atan2(tanY, tanX) */
+        forwardMesh->setRotation(owner->getRotation());
+        forwardMesh->setSize(owner->getSize());
+
+        linebox.h = 0.01f + ownerSize * 400.0f * owner->getVelocity();
+        accelMesh->setBox(linebox);
+        accelMesh->setColor(Vec3{0.0f,1.0f,0.0f});
+
+        accelMesh->setPosition(worldBox.getPos().x, worldBox.getPos().y);
+
+        /* accelMesh->setRotation(std::acos(
+            owner->getPosition().dot(Vec2{tanX, tanY}) /
+            (owner->getPosition().magnitude() * Vec2{tanX, tanY}.magnitude())
+        )); // -std::atan2(tanY, tanX) */
+        accelMesh->setRotation(forwardMeshRot);
+        accelMesh->setSize(owner->getSize());
 
         // Draw only the visualization when debug mode is enabled. The actual
         // collision rectangle above is maintained regardless of this flag.
@@ -95,6 +155,7 @@ void Hitbox::logic(){
 }
 
 void Hitbox::draw(){
-    
-    mesh->draw();
+    hitboxMesh->draw();
+    forwardMesh->draw();
+    accelMesh->draw();
 }

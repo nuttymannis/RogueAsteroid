@@ -13,6 +13,7 @@ public:
 	~Bullet();
 	void draw(GLuint shader);
 	void logic() override;
+	void onCollision(Entity* target) override;
 	bool isExpired() const { return expired; }
 	CircleMesh* getMesh() { return mesh; }
 

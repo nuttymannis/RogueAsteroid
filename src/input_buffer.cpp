@@ -2,7 +2,13 @@
 #include "input_buffer.h"
 
 InputBuffer::InputBuffer(Game* _game){
-    game = _game;
+    game = nullptr;
+    if(_game != nullptr) {
+        game = _game;
+    } else{
+        printf("[Warning] InputBuffer::InputBuffer(Game* _game) _game points to null\n");
+    }
+    
 
     for(int i = 0; i < 512; i++){
         keyActions[{i, false}] = [](){};

@@ -9,6 +9,7 @@ Asteroid::Asteroid(Game* _game) : Entity(_game) {
     pos = {Game::randomFloat(-1.0f, 1.0f),Game::randomFloat(-1.0f, 1.0f)};
     size = Game::randomFloat(0.02f, 0.05f) * 1.5f;
     rot = Game::randomFloat(0, 2*M_PI);
+    setAngularVelocity(Game::randomFloat(-2.0f, -2.0f));
 }
 
 Asteroid::Asteroid(Game* _game, float rootX, float rootY, float asteroid_size) : Asteroid(_game) {
@@ -20,9 +21,9 @@ Asteroid::Asteroid(Game* _game, float rootX, float rootY, float asteroid_size) :
 }
 
 void Asteroid::logic() {
-    if(getVelocity() < 0.003f){
-        setRotation(Game::randomFloat(rot-(M_PI/2), rot+(M_PI/2)));
-        accelerate(Game::randomFloat(0.3f, 0.6f));
+    if(getVelocity() < 0.0015f){
+        //setAngularVelocity(Game::randomFloat(-0.5f, 0.5f));
+        //accelerate(Game::randomFloat(0.3f, 1.0f));
     }
     mesh->setRotation(rot); //((game->deltaTime() * 0.001 * std::sqrt(x)) * (x * x))
     mesh->setSize(size);

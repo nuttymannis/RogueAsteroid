@@ -15,6 +15,7 @@ class Player : public Entity{
     void draw();
     void fireWeapon();
     void input();
+    void onCollision(Entity* target) override;
     InputBuffer* getInputBuffer()   {return inputBuffer;}
     
     
@@ -22,6 +23,10 @@ class Player : public Entity{
     GLuint shader;
     TriangleMesh* ship;
     InputBuffer* inputBuffer;
+    Vec3 playerColor;
     int hp;
     float weaponCooldown, lastTime, currentTime;
+    float playerHue, hueIncrement = 0.5f;
+    bool rainbow = true;
+    bool rainbowIncreasing = true;
 };
