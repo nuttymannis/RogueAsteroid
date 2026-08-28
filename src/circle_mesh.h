@@ -13,12 +13,13 @@ void setSize(float newSize) {
 }
 void setPosition(float _x, float _y) {pos = {_x, _y};}
 void setRotation(float r) {rot = r;}
-void draw(GLuint shader);
+void draw();
 void setColor(Vec3 _color) { color = _color; uploadGeometry(); }
 void setColor(float _r, float _g, float _b) { color = {_r, _g, _b}; uploadGeometry(); }
 ~CircleMesh();
 
 private:
+GLuint shader;
 Vec2 pos;                // Mesh translation sent to the vertex shader.
 float size, rot;         // Geometry radius and shader rotation in radians.
 void uploadGeometry();

@@ -15,7 +15,8 @@ Entity::Entity(Game* _game, bool generateHitbox)
       deathFlag(false),
       pos{0.0f, 0.0f},
       bounds{800.0f, 600.0f},
-      hitbox(nullptr)
+      hitbox(nullptr),
+      id(EntityID::Generic)
 {
     // Some entities do not participate in collision detection. Keep the
     // pointer valid in both cases so logic() and the destructor can safely
@@ -50,10 +51,10 @@ void Entity::logic()
     // World entities wrap around the normalized screen bounds by default.
     // Projectiles override logic() so they can leave the screen and expire.
     if (pos.x > 1.0f || pos.x < -1.0f) {
-        pos.x *= -1.0f;
+        pos.x *= -0.98f;
     }
     if (pos.y > 1.0f || pos.y < -1.0f) {
-        pos.y *= -1.0f;
+        pos.y *= -0.98f;
     }
 
     // Update the hitbox after movement so collision checks use this frame's
@@ -76,6 +77,8 @@ void Entity::integrateMotion()
 
     pos.x += deltaX;
     pos.y += deltaY;
+
+    hitbox->setRotation(rot);
 
     if (hitbox != nullptr && std::hypot(deltaX, deltaY) > 0.00001f) {
         // The forward mesh extends along local +Y, so atan2 arguments are

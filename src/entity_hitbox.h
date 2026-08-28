@@ -18,6 +18,8 @@ class Hitbox {
 
     void setRect(Rect _r)     {worldBox = _r;}
     void setColor(Vec3 _color){color = _color;}
+    void setRotation(float _r){rot = _r;}
+    float getRotation() const {return rot;}
     Rect* getRect()           {return &worldBox;}
     Entity* getOwner()        {return owner;}
 

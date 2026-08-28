@@ -6,7 +6,9 @@ Bullet::Bullet(Game* _game, float rootX, float rootY, float bulletSize,
 			   float bulletSpeed, float rotation, bool _isPlayer)
 	: Entity(_game)
 {
+	setID(EntityID::Bullet);
     isPlayer = _isPlayer;
+	shader = game->getShader();
 
 	// Bullet owns the circle used to display it. CircleMesh remains responsible
 	// for generic geometry, movement, and OpenGL drawing operations.
@@ -33,17 +35,19 @@ void Bullet::logic(){
 	// the screen edge; leaving the normalized bounds marks them for removal.
 	integrateMotion();
 
-	// Unlike ships and stars, bullets are not wrapped around the screen. Their
-	// position is checked after integration so Game can delete them from its
-	// container once they have crossed the visible play area.
-	const float _x = pos.x;
-	const float _y = pos.y;
-    if(_x > 1 || _x < -1 || _y > 1 || _y < -1){
-        expired = true;
-		if (hitbox != nullptr)
-			hitbox->setDraw(false); // Disable debug rendering for expired bullets.
-	}
+	lifeTime -= game->deltaTime();
 
+	if(lifeTime <= 0.0f)
+		expired = true;
+
+	// World entities wrap around the normalized screen bounds by default.
+    if (pos.x > 1.0f || pos.x < -1.0f) {
+        pos.x *= -1.0f;
+    }
+    if (pos.y > 1.0f || pos.y < -1.0f) {
+        pos.y *= -1.0f;
+    }
+	
     if(!expired && hitbox != nullptr){
         //hitbox->setRect({pos.x - size + 20.0f, pos.y - size * 4.0f, size * 8.0f, size * 8.0f});
         hitbox->logic();
@@ -52,7 +56,8 @@ void Bullet::logic(){
 
 void Bullet::onCollision(Entity *target)
 {
-	if(target != nullptr && target != this && expired == false && target->isDead() == false){
+	printf("Bullet HAHASHDASDIHA\n");
+	if(target != nullptr && target != this && expired == false && target->isDead() == false && target != game->getPlayer()){
 		printf("[!] Bullet *%p collided with Entity *%p\n", this, target);
 		expired = true;
 		if (hitbox != nullptr)
@@ -64,7 +69,7 @@ void Bullet::onCollision(Entity *target)
 	}
 }
 
-void Bullet::draw(GLuint shader)
+void Bullet::draw()
 {
 	if (!expired) {
 		// Advance the Bullet entity once before copying its transform to the
@@ -75,7 +80,9 @@ void Bullet::draw(GLuint shader)
 		// drawing so the mesh remains a rendering component only.
 		mesh->setPosition(pos.x, pos.y);
 		mesh->setRotation(rot);
-		mesh->draw(shader);
+		mesh->draw();
+	} else {
+		kill();
 	}
 }
 

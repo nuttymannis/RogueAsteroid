@@ -12,7 +12,7 @@ class Player : public Entity{
     public:
     Player(Game* _game, GLuint _shader);
     TriangleMesh* getShip() { return ship; }
-    void draw();
+    void draw() override;
     void fireWeapon();
     void input();
     void onCollision(Entity* target) override;

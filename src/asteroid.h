@@ -11,11 +11,13 @@ class Asteroid : public Entity {
     Asteroid(Game* _game);
     Asteroid(Game* _game, float rootX, float rootY, float asteroid_size);
     
-    void logic();
+    void logic() override;
+
+    void onCollision(Entity* target) override;
 
     void generateMesh();
 
-    void draw();
+    void draw() override;
 
     private:
     AsteroidMesh* mesh;
