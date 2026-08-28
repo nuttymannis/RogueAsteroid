@@ -1,10 +1,15 @@
 #pragma once
 #include "config.h"
 #include "game.h"
+#include "entity.h"
 #include "player.h"
 #include "asteroid.h"
 #include "entity_hitbox.h"
+#include "text_render.h"
 #include <algorithm>
+
+#include "ft2build.h"
+#include FT_FREETYPE_H
 
 void Game::removeHitbox(Hitbox* hitbox)
 {
@@ -36,11 +41,10 @@ Game::Game(){
     Game::lastTime = Game::currentTime = Game::fpsLast = glfwGetTime();
     Game::frameCount = 0;
     Game::_deltaTime = 0.0f;
-
     
 }
 
-Game::Game(GLFWwindow* _window, GLuint _shader, InputBuffer* _iBuffer) : Game(){
+Game::Game(GLFWwindow* _window, GLuint _shader, InputBuffer* _iBuffer, TextRenderer* _t) : Game(){
     window = _window;
     shader = _shader;
 
@@ -48,21 +52,27 @@ Game::Game(GLFWwindow* _window, GLuint _shader, InputBuffer* _iBuffer) : Game(){
         inputBuffer = _iBuffer;
     else
         inputBuffer = new InputBuffer(this);
-      
+
+    if(_t != nullptr){
+        textRenderer = _t;
+    }
+
     player = new Player(this, shader);
+    entityList.push_back(player);
 
     inputBuffer->bindKey({GLFW_KEY_ESCAPE}, [this](){pauseGame();});
-    inputBuffer->bindKey({GLFW_KEY_F8, false}, [this](){generateStars(512);});
+    inputBuffer->bindKey({GLFW_KEY_F9, false}, [this](){generateAsteroids(5);});
+    inputBuffer->bindKey({GLFW_KEY_F8, true}, [this](){backEntityList.clear(); generateStars(512);});
     inputBuffer->bindKey({GLFW_KEY_F7, false}, [this](){toggleDebugStatus();});
 
     inputBuffer->bindKey(GLFW_KEY_F6, [this](){
         for(size_t i = 0; i < hitboxObjects.size(); ++i){
             Hitbox* hitbox = hitboxObjects[i];
             if(hitbox != nullptr){
-                printf("Hitbox %zu: Owner %p, Owner Type: %s, Pos [%f, %f], Box [%f, %f, %f, %f]\n", 
+                printf("Hitbox %zu: Owner %p, Owner ID: %i, Pos [%f, %f], Box [%f, %f, %f, %f]\n", 
                     i,
                     hitbox->getOwner(),
-                    typeid(*(hitbox->getOwner())).name(),
+                    static_cast<int>(hitbox->getOwner()->getID()),
                     hitbox->getPos().x,
                     hitbox->getPos().y,
                     hitbox->getRect()->x,
@@ -75,12 +85,14 @@ Game::Game(GLFWwindow* _window, GLuint _shader, InputBuffer* _iBuffer) : Game(){
     });
 
     inputBuffer->bindKey({GLFW_KEY_F5, true}, [this](){
+        player->setVelocityVector({0.0f, 0.0f});
         double x, y;
         glfwGetCursorPos(window, &x, &y);
 
-        float newX = float(1.0 - ((x / 800.0) * 2.0));
-        float newY = float(1.0 - ((y / 600.0) * 2.0));
-        player->setPosition(newX, newY);
+        player->setPosition(
+            float(1.0 - ((x / WIN_RES_X) * 2.0)), 
+            float(1.0 - ((y / WIN_RES_Y) * 2.0))
+        );
     });
 
     glfwSetWindowUserPointer(window, this);
@@ -93,23 +105,20 @@ Game::Game(GLFWwindow* _window, GLuint _shader, InputBuffer* _iBuffer) : Game(){
         game->getInputBuffer()->handleKey(key, action);
     });
 
-    generateStars(512);
+    generateStars(STAR_COUNT);
 }
 
 void Game::generateStars(int count, float _brightness){
     // Reserve the final pointer count up front so adding stars does not cause
     // repeated vector reallocations as the collection grows.
-    starObjects.clear();
-    starObjects.reserve(count);
-
     for(int i = 0; i < count; ++i){
         Star* star = new Star(this, Game::randomFloat(0.0005f, 0.001f));
-        starObjects.push_back(star);
+        backEntityList.push_back(star);
     }
 
     for(int i = 0; i < count; ++i){
         Star* star = new Star(this, Game::randomFloat(0.0005f, 0.001f), Game::randomFloat(0.1f,0.8f));
-        starObjects.push_back(star);
+        backEntityList.push_back(star);
     }
 }
 
@@ -117,8 +126,8 @@ void Game::generateAsteroids(int count){
     for(int i = 0; i < count; i++){
         Asteroid* asteroid = new Asteroid(this);
         asteroid->rotate(Game::randomFloat(0, M_PI*2));
-        asteroid->accelerate(2.0f * deltaTime()); //Game::randomFloat(0.001f,0.0013f)
-        asteroidObjects.push_back(asteroid);
+        asteroid->accelerate(Game::randomFloat(0.5f,5.0f) * deltaTime()); //Game::randomFloat(0.001f,0.0013f)
+        entityList.push_back(asteroid);
     }
 }
 
@@ -183,14 +192,14 @@ void Game::logic(){ // This function runs first
     // if(hitboxObjects.size() > 0)
     // printf("[%d](%p) %p\n", 0, hitboxObjects.at(0)->getOwner(), this);
 
-    if(asteroidObjects.size() == 0)
+    if(!findEntityByID(EntityID::Asteroid))
         generateAsteroids();
 }
 
 void Game::draw(){ // Handles all drawing of game objects after logic() is called
-    for(size_t i = 0; i < starObjects.size(); ++i){
+    /* for(size_t i = 0; i < starObjects.size(); ++i){
         Star* star = starObjects[i];
-        star->draw(Game::shader);
+        star->draw();
     }
 
     for (size_t i = 0; i < bulletObjects.size() && pause == false;) {
@@ -221,17 +230,57 @@ void Game::draw(){ // Handles all drawing of game objects after logic() is calle
     }
 
     if(pause == false)
-        player->draw();
+        player->draw(); */
+
+    for(size_t i = 0; i < backEntityList.size(); i++ ){
+         backEntityList.at(i)->draw();
+    }
+
+    for(size_t i = 0; i < entityList.size() && !pause; i++){
+        Entity* ent = entityList.at(i);
+        
+        if(entityList.at(i)->isDead()){
+            delete ent;
+            entityList.erase(entityList.begin() + i);
+            i--;
+            continue;
+        }
+
+        ent->draw();
+    }
+
+    // float(1.0 - ((x / WIN_RES_X) * 2.0)): Screen Space to World Space
+    // float()
+    if(debug)
+        for(Entity* e : entityList){
+            if(e->getID() != EntityID::Bullet){
+                Vec2 ePos = {(WIN_RES_X/2) * (1.0f - e->getPosition().x), (WIN_RES_Y/2) * (1.0f + e->getPosition().y)};
+
+                textRenderer->RenderText(
+                    "ID: " + std::to_string(static_cast<int>(e->getID())),
+                    ePos.x + e->getSize() + 8.0f, 
+                    ePos.y,
+                    0.15f,
+                    glm::vec3(1.0f, 1.0f, 1.0f)
+                );
+
+                textRenderer->RenderText(
+                    "(x, y): (" + std::to_string(e->getPosition().x) + ", " + std::to_string(e->getPosition().y) + ")",
+                    ePos.x + e->getSize() + 8.0f, 
+                    ePos.y - 8.0f,
+                    0.15f,
+                    glm::vec3(1.0f, 1.0f, 1.0f)
+                );
+            }
+        }
 
     // All entities have now updated their hitboxes for this frame.
     AABECollisionLogic();
 }
 
-
-
 void Game::calculateFrames(){
     currentTime = glfwGetTime();
-    double seconds = 5.0;
+    double seconds = 0.5;
 
     // Assign deltaTime
     _deltaTime = currentTime - lastTime;

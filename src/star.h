@@ -12,8 +12,9 @@ class Star : public Entity {
     Star(Game* _game, float star_size, float _bright = 1.0f);
     float getBrightness() {return brightness;}
     void setBrightness(float _brightness) {brightness = _brightness;}
-    void draw(GLuint _shader);
     void randomizePosition();
+    void logic() override {}
+    void draw() override;
 
     private:
     void initMesh();

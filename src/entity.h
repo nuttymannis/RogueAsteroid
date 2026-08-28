@@ -7,14 +7,35 @@ class Hitbox;
 
 // Entity contains shared simulation state. Rendering remains in the concrete
 // mesh classes that derive from it or are owned by higher-level entities.
+
+enum class EntityID {
+          Player = 0,
+          Star = 1,
+          Bullet = 2,
+          Asteroid = 3,
+          Generic = 4
+};
+
 class Entity {
 public:
      explicit Entity(Game* game, bool generateHitbox = true);
      virtual ~Entity();
 
+     bool operator==(const Entity& other) const {
+        return typeid(this).name() == typeid(other).name(); // Matches if IDs are identical
+     }
+
      void setPosition(float x, float y) { pos = {x, y}; }
      Vec2 getPosition() const { return pos; }
      Vec2 forward() const { return {std::sin(rot), std::cos(rot)}; }
+     Vec2 forwardVelocity() const { 
+          float magnitude = getVelocity();
+
+          if(magnitude == 0.0f)
+               return {0.0f, 0.0f};
+          
+          return {deltaX / magnitude, deltaY / magnitude};
+     }
      virtual void setSize(float newSize) { size = newSize; }
      virtual void onCollision(Entity* target) {}//printf("Entity *%p collided with Entity *%p\n", this, target);
      float getSize() const { return size; }
@@ -22,8 +43,8 @@ public:
      void rotate(float amount);
      void setRotation(float rotation) { rot = rotation; }
      void setAngularVelocity(float deltaRotation) { deltaRot = deltaRotation; printf("Entity *%p angular velocity set to %f\n", this, deltaRot); }
-     void setAcceleration(Vec2 _accel) {deltaX = _accel.x; deltaY = _accel.y;}
-     Vec2 getAcceleration() {return Vec2{deltaX, deltaY};}
+     void setVelocityVector(Vec2 _accel) {deltaX = _accel.x; deltaY = _accel.y;}
+     Vec2 getVelocityVector() {return Vec2{deltaX, deltaY};}
      float getRotation() const { return rot; }
      void setBrake(bool newBrake) { brake = newBrake; }
      void kill() { deathFlag = true; }
@@ -33,13 +54,17 @@ public:
      void setSpeed(float newSpeed) { speed = newSpeed; }
      float getVelocity() const { return std::hypot(deltaX, deltaY); }
      void setBounds(float x, float y) { bounds = {x, y}; }
+     void setID(EntityID _id) {id = _id;}
+     EntityID getID() { return id; }
      Vec2 getBounds() const { return bounds; }
      Hitbox* getHitbox() const { return hitbox; }
      virtual void logic();
+     virtual void draw() {};
 
 protected:
      void integrateMotion();
      Game* game;          // Game instance that supplies timing and shared systems.
+     EntityID id;         // Identifer for which type the entity is
      float size;          // Entity radius or visual size in normalized coordinates.
      float rot;           // Facing angle in radians.
      float deltaRot = 0;  // Angular velocity in radians.

@@ -60,18 +60,72 @@ Hitbox::~Hitbox(){
     delete accelMesh;
 }
 
+static void projectVertices(const std::array<Vec2, 4>& vertices,
+                            const Vec2& axis,
+                            float& minimum,
+                            float& maximum)
+{
+    // Project the first corner onto the axis to initialize the interval. A
+    // projection is the dot product of a point and the direction axis.
+    minimum = maximum = vertices[0].x * axis.x + vertices[0].y * axis.y;
+
+    // Project every remaining corner and expand the interval to contain it.
+    // The final [minimum, maximum] range is the rectangle's shadow on the
+    // selected axis.
+    for (size_t i = 1; i < vertices.size(); ++i) {
+        float projection = vertices[i].x * axis.x + vertices[i].y * axis.y;
+        minimum = std::min(minimum, projection);
+        maximum = std::max(maximum, projection);
+    }
+}
+
+static bool projectionsOverlap(const std::array<Vec2, 4>& first,
+                               const std::array<Vec2, 4>& second,
+                               const Vec2& axis)
+{
+    // Find each rectangle's minimum and maximum projection on the same axis.
+    float firstMin, firstMax;
+    float secondMin, secondMax;
+
+    projectVertices(first, axis, firstMin, firstMax);
+    projectVertices(second, axis, secondMin, secondMax);
+
+    // The intervals overlap when neither rectangle ends before the other
+    // begins. A gap means this axis separates the rectangles.
+    return firstMax >= secondMin && secondMax >= firstMin;
+}
+
 bool Hitbox::isColliding(Hitbox* _target)
 {
+    // A missing target cannot overlap this hitbox.
     if (_target == nullptr)
         return false;
 
-    Rect* _tBox = _target->getRect();
+    // Convert both axis-aligned Rect values into their four world-space
+    // corners. The rotation is applied around each rectangle's center.
+    const std::array<Vec2, 4> first = worldBox.vertices(rot);
+    const std::array<Vec2, 4> second =
+        _target->getRect()->vertices(_target->getRotation());
 
-    return  worldBox.x < _tBox->x + _tBox->w &&
-            worldBox.x + worldBox.w > _tBox->x &&
-            worldBox.y < _tBox->y + _tBox->h &&
-            worldBox.y + worldBox.h > _tBox->y;
-            
+    // These are the two local axes for each rectangle. A rectangle rotated by
+    // angle r has axes (cos(r), sin(r)) and (-sin(r), cos(r)).
+    const Vec2 axes[] = {
+        {std::cos(rot), std::sin(rot)},
+        {-std::sin(rot), std::cos(rot)},
+        {std::cos(_target->getRotation()), std::sin(_target->getRotation())},
+        {-std::sin(_target->getRotation()), std::cos(_target->getRotation())}
+    };
+
+    // Project both rectangles onto every candidate axis. If one pair of
+    // projections has a gap, that axis separates the rectangles and collision
+    // is impossible.
+    for (const Vec2& axis : axes) {
+        if (!projectionsOverlap(first, second, axis))
+            return false;
+    }
+
+    // No separating axis was found, so the rotated rectangles overlap.
+    return true;
 }
 
 void Hitbox::logic(){
@@ -89,65 +143,64 @@ void Hitbox::logic(){
         // Store the collision rectangle in world coordinates. The rectangle's
         // origin is its upper-left corner, while w and h describe its extent.
         worldBox = {
-            pos.x - ownerSize,
-            pos.y - ownerSize,
+            (pos.x - ownerSize),
+            (pos.y - ownerSize),
             ownerSize * 2.0f,
             ownerSize * 2.0f
         };
 
-        // QuadMesh stores local vertex coordinates, so give it a rectangle
-        // centered around its own origin. The hitboxMesh is translated below using
-        // the owner's world position.
-
-        Rect localBox = {-ownerSize, -ownerSize, worldBox.w, worldBox.h}; // Stores world hitbox coordinates in local coordinates
-        hitboxMesh->setBox(localBox);
-        hitboxMesh->setColor(color);
-        
-        float tanX = std::sin(owner->getAcceleration().x);
-        float tanY = std::cos(owner->getAcceleration().y);
-
-        // Keep the debug quad aligned with the owner's position and rotation.
-        hitboxMesh->setPosition(pos.x, pos.y);
-        hitboxMesh->setRotation(owner->getRotation());
-        hitboxMesh->setSize(owner->getSize());
-
-
-        Rect linebox = {
-            -ownerSize + (worldBox.w / 2.0f) - MESH_WIDTH,
-            -ownerSize + (worldBox.h / 2.0f),
-            MESH_WIDTH * 2.0f,
-            0.1f
-        };
-
-        forwardMesh->setBox(linebox);
-        forwardMesh->setColor(Vec3{1.0f,1.0f,1.0f});
-
-        forwardMesh->setPosition(worldBox.getPos().x, worldBox.getPos().y);
-
-        /* forwardMesh->setRotation(std::acos(
-            owner->getPosition().dot(Vec2{tanX, tanY}) /
-            (owner->getPosition().magnitude() * Vec2{tanX, tanY}.magnitude())
-        )); // -std::atan2(tanY, tanX) */
-        forwardMesh->setRotation(owner->getRotation());
-        forwardMesh->setSize(owner->getSize());
-
-        linebox.h = 0.01f + ownerSize * 400.0f * owner->getVelocity();
-        accelMesh->setBox(linebox);
-        accelMesh->setColor(Vec3{0.0f,1.0f,0.0f});
-
-        accelMesh->setPosition(worldBox.getPos().x, worldBox.getPos().y);
-
-        /* accelMesh->setRotation(std::acos(
-            owner->getPosition().dot(Vec2{tanX, tanY}) /
-            (owner->getPosition().magnitude() * Vec2{tanX, tanY}.magnitude())
-        )); // -std::atan2(tanY, tanX) */
-        accelMesh->setRotation(forwardMeshRot);
-        accelMesh->setSize(owner->getSize());
-
         // Draw only the visualization when debug mode is enabled. The actual
         // collision rectangle above is maintained regardless of this flag.
-        if(drawMesh)
+        if(drawMesh){
+            // QuadMesh stores local vertex coordinates, so give it a rectangle
+            // centered around its own origin. The hitboxMesh is translated below using
+            // the owner's world position.
+
+            Rect localBox = {-ownerSize, -ownerSize, worldBox.w, worldBox.h}; // Stores world hitbox coordinates in local coordinates
+            hitboxMesh->setBox(localBox);
+            hitboxMesh->setColor(color);
+            
+            float tanX = std::sin(owner->getVelocityVector().x);
+            float tanY = std::cos(owner->getVelocityVector().y);
+
+            // Keep the debug quad aligned with the owner's position and rotation.
+            hitboxMesh->setPosition(pos.x, pos.y);
+            hitboxMesh->setRotation(owner->getRotation());
+            hitboxMesh->setSize(owner->getSize());
+
+            Rect linebox = {
+                -ownerSize + (worldBox.w / 2.0f) - MESH_WIDTH,
+                -ownerSize + (worldBox.h / 2.0f),
+                MESH_WIDTH * 2.0f,
+                0.1f
+            };
+
+            forwardMesh->setBox(linebox);
+            forwardMesh->setColor(Vec3{1.0f,1.0f,1.0f});
+
+            forwardMesh->setPosition(worldBox.getPos().x, worldBox.getPos().y);
+
+            /* forwardMesh->setRotation(std::acos(
+                owner->getPosition().dot(Vec2{tanX, tanY}) /
+                (owner->getPosition().magnitude() * Vec2{tanX, tanY}.magnitude())
+            )); // -std::atan2(tanY, tanX) */
+            forwardMesh->setRotation(owner->getRotation());
+            forwardMesh->setSize(owner->getSize());
+
+            linebox.h = 0.01f + ownerSize * 2.0f * owner->getVelocity();
+            accelMesh->setBox(linebox);
+            accelMesh->setColor(Vec3{0.0f,1.0f,0.0f});
+
+            accelMesh->setPosition(worldBox.getPos().x, worldBox.getPos().y);
+
+            /* accelMesh->setRotation(std::acos(
+                owner->getPosition().dot(Vec2{tanX, tanY}) /
+                (owner->getPosition().magnitude() * Vec2{tanX, tanY}.magnitude())
+            )); // -std::atan2(tanY, tanX) */
+            accelMesh->setRotation(forwardMeshRot);
+            accelMesh->setSize(owner->getSize());
             draw();
+        }
     } else {
         // If the hitbox is no longer valid, disable its debug rendering.
         drawMesh = false;

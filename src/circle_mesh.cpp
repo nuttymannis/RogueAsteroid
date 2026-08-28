@@ -9,7 +9,7 @@
 
 CircleMesh::CircleMesh(Game* _game) {
     vertex_count = 12;
-
+    shader = _game->getShader();
     color = {1.0f, 1.0f, 1.0f};
 
     // The VAO stores the circle's vertex-input configuration, while the two
@@ -74,7 +74,7 @@ void CircleMesh::uploadGeometry() {
     glEnableVertexAttribArray(1);
 }
 
-void CircleMesh::draw(GLuint shader) {
+void CircleMesh::draw() {
     // Rebind the previously configured VAO. The circle is still rendered every
     // frame; only its changing transform values need to be sent again.
     glBindVertexArray(VAO);

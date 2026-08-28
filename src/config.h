@@ -2,6 +2,7 @@
 #include <iostream>
 #include <glad/glad.h>
 #include <GLFW/glfw3.h>
+#include <glm/glm.hpp>
 
 #include <fstream>
 #include <sstream>
@@ -11,6 +12,9 @@
 #include <cmath>
 
 #define M_PI           3.14159265358979323846
+
+#define WIN_RES_X      800
+#define WIN_RES_Y      600
 
 struct Vec2 {
 	float x;

@@ -5,12 +5,13 @@
 #include "input_buffer.h"
 
 Player::Player(Game* _game, GLuint _shader) : Entity(_game){
+    setID(EntityID::Player);
     shader = _shader;
     inputBuffer = game->getInputBuffer();
 
     lastTime = game->getCurrentTime();
 
-    weaponCooldown = 0.25f; // 0.5 seconds cooldown
+    weaponCooldown = 0.15f; // 0.1 second cooldown
 
     hp = 3;
     playerHue = 0.0f;
@@ -75,7 +76,7 @@ void Player::fireWeapon()
 
         // Carry some of the player's current velocity into the projectile so
         // firing while moving gives the bullet a different initial speed.
-        const float bulletSpeed = 1.5f + (1.0f + getVelocity() * 200.0f);
+        const float bulletSpeed = 1.5f + (1.0f + getVelocity() * 2.0f);
         Bullet* bullet = new Bullet(game, pos.x + forward().x * size, pos.y + forward().y * size, bulletSize,
                 bulletSpeed, rot);
 
@@ -113,5 +114,43 @@ void Player::input()
 
 void Player::onCollision(Entity *target)
 {
-    setAcceleration(target->forward() * -1.0f * game->deltaTime());
+    /* if(game->getBullets().size()) {
+        if(target != game->getBullets().front())
+            setAcceleration(target->forward() * -1.0f * game->deltaTime());
+    } else 
+        setAcceleration(target->forward() * -1.0f * game->deltaTime()); */
+
+    if(target != nullptr && target->getID() != EntityID::Bullet){
+        // Build a vector from the target's center to the player's center.
+        Vec2 offset = getPosition() - target->getPosition();
+
+        // The distance is used to normalize offset into a direction vector.
+        float distance = offset.magnitude();
+
+        // Avoid dividing by zero if both entities occupy the same position.
+        if(distance == 0.0f)
+            return;
+
+        // normal points from the target toward the player and has length 1.
+        Vec2 normal = offset / distance;
+
+        // Relative velocity describes how the player moves compared with the
+        // target, which is what determines whether they approach each other.
+        Vec2 relativeVelocity = getVelocityVector() - target->getVelocityVector();
+
+        // The dot product keeps only the relative velocity along the collision
+        // normal; sideways motion does not push the objects apart.
+        float speedAlongNormal = relativeVelocity.x * normal.x + relativeVelocity.y * normal.y;
+
+        // A non-negative value means the objects are separating already.
+        if(speedAlongNormal >= 0.0f)
+            return;
+
+        // Reverse the inward normal speed to create a simple bounce impulse.
+        float impulse = -speedAlongNormal;
+        // Add the impulse to the player and apply the opposite impulse to the
+        // target so momentum is transferred in opposite directions.
+        setVelocityVector(getVelocityVector() + normal * impulse * 1.2f); 
+        target->setVelocityVector(target->getVelocityVector() - normal * impulse);
+    }
 }

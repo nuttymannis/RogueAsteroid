@@ -3,6 +3,11 @@
 #include "game.h"
 #include <filesystem>
 
+#include "ft2build.h"
+#include FT_FREETYPE_H
+
+#include "text_render.h"
+
 unsigned int make_module(const std::string& filepath, unsigned int module_type);
 unsigned int make_shader(const std::string& vertex_filepath, const std::string& fragment_filepath);
 
@@ -16,7 +21,7 @@ int main(int argc, char* argv[]){
     GLFWwindow* window;
 
     if(!glfwInit()){
-        std::cout << "GLFW couldn't start." << std::endl;
+        std::cout << "ERROR::GLFW: GLFW couldn't start." << std::endl;
         return -1;
     }
     glfwWindowHint(GLFW_RESIZABLE, 0);
@@ -44,6 +49,9 @@ int main(int argc, char* argv[]){
     // Tell OpenGL which rectangle of the framebuffer receives clip-space
     // output. The viewport converts shader coordinates from -1..1 into pixels.
     glViewport(0,0,w,h);
+
+    glEnable(GL_BLEND);
+    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
     
     const std::filesystem::path executablePath =
         std::filesystem::absolute(argv[0]).parent_path();
@@ -53,11 +61,38 @@ int main(int argc, char* argv[]){
         (shaderDirectory / "fragment.txt").string()
     );
 
+    unsigned int textShader = make_shader(
+        (shaderDirectory / "textvertex.txt").string(),
+        (shaderDirectory / "textfragment.txt").string()
+    );
     
     InputBuffer* inputBuffer = new InputBuffer();
-    Game* game = new Game(window, shader, inputBuffer);
-
+    TextRenderer* textRenderer = new TextRenderer(textShader);
+    Game* game = new Game(window, shader, inputBuffer, textRenderer);
+    
     inputBuffer->setGame(game);
+
+    textRenderer->initVertexBuffer();
+
+    if (textRenderer->init())
+    {
+        std::cout << "ERROR::FREETYPE: Could not init FreeType Library" << std::endl;
+        return -1;
+    }
+
+    if (textRenderer->load_face("fonts/PressStart2P.ttf"))
+    {
+        std::cout << "ERROR::FREETYPE: Failed to load font" << std::endl;  
+        return -1;
+    }
+
+    if (textRenderer->set_font_size(0, 48))
+    {
+        std::cout << "ERROR::FREETYPE: Could not set font size" << std::endl;  
+        return -1;
+    }
+
+    textRenderer->generateCharmap();
 
     while(!glfwWindowShouldClose(window)){
         glfwPollEvents();
@@ -75,11 +110,11 @@ int main(int argc, char* argv[]){
 
         // Select the linked shader program for all subsequent draw operations.
         glUseProgram(shader);
-        
+
         game->logic(); 
         game->draw();
         
-
+        
         // Present the completed back buffer and make a fresh back buffer
         // available for the next frame. This prevents partially drawn frames
         // from being shown to the usaer.

@@ -4,6 +4,7 @@
 #include "game.h"
 
 Star::Star(Game* _game, bool init) : Entity(_game, false){
+    setID(EntityID::Star);
     randomizePosition();
     size = 0.005f;
     brightness = 1;
@@ -17,11 +18,11 @@ Star::Star(Game* _game, float star_size, float _bright) : Star(_game, false){
     initMesh();
 }
 
-void Star::draw(GLuint _shader)
+void Star::draw()
 {
     mesh->setPosition(pos.x, pos.y);
     mesh->setRotation(rot);
-    mesh->draw(_shader);
+    mesh->draw();
 }
 
 Star::Star(Game* _game, float rootX, float rootY,
